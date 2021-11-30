@@ -1,17 +1,16 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% MULTISCALE SOLVER FOR ELLIPTIC PDE WITH ROUGH COEFFICIENTS BASED ON A VARIANT OF LOD METHODS %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear
-
-%%%% NEED TO INTRODUCE SOMEWHERE THE PARTS OF COEFF. MATRIX A11 A12 A21 A22!!!!!%Done
-
-%%% NEED TO DEFINE FUNCTION f IN A SCRIPT. (NEED VALUES AT POINTS FOR GAUSS QUADRATURE)% Done
 tic
 % Mesh Parameters
-Nx=4;%Number of interior coarse points in x direction
-Ny=4;%Number of interior coarse points in y direction
+Nx=19;%Number of interior coarse points in x direction
+Ny=19;%Number of interior coarse points in y direction
 %NICEH=Nx-1;%Number of interior coarse elements in the horiz. direction
 %NICEV=Ny-1;%Number of interior coarse elements in the vert. direction
 NTCEH=Nx+1;%Total number of coarse elements in the horiz. direction
 %NTCEV=Ny+1;%Total number of coarse elements in the vert. direction
-NR=1;%Number of refinement levels.
+NR=2;%Number of refinement levels.
 R=2^NR;
 n=R*(Nx+1)+1;%total number of fine grid points in horiz. direction
 a=1/9;
@@ -22,7 +21,7 @@ h=H/R;
 N=5;
 cl=4;
 
-%Number of subdomains for LOD system precon
+%Number of subdomains for AS preconditioner for LOD system 
 PP=2;
 QQ=2;
 
@@ -196,9 +195,8 @@ M_coef=sparse((n-2)^2,Nx^2);
     M_coef=1/4*M_coef;%0*M_coef;%1/4*M_coef;
  toc
  %pause
-    %%      
- %%Computation of stiffness matrix for corrections
-
+          
+%%Computation of stiffness matrix for corrections
  
 nf=n-2;%number of interior fine grid points in the horizontal direction
 nc=Nx;
@@ -252,20 +250,6 @@ for i=1:nf^2
         end
 end
 
-% for i=1:nf^2
-%     for j=1:nf^2
-%         %AB(i,j)=BF1(Q(i),P(i),P(j),Q(j),A11,A12,A21,A22,Hi/h);
-%         AB(i,j)=BilinearGQuadPartInterm(X(i)-h,X(i),Y(i)-h,Y(i),X(i),Y(i),X(j),Y(j),h,N)+BilinearGQuadPartInterm(X(i),X(i)+h,Y(i)-h,Y(i),X(i),Y(i),X(j),Y(j),h,N)+BilinearGQuadPartInterm(X(i)-h,X(i),Y(i),Y(i)+h,X(i),Y(i),X(j),Y(j),h,N)+BilinearGQuadPartInterm(X(i),X(i)+h,Y(i),Y(i)+h,X(i),Y(i),X(j),Y(j),h,N);
-%     end
-%     FL2(i)=GaussianQuad2D3O(i,X(i)-h,X(i)+h,Y(i)-h,Y(i)+h,h,nf);
-% end
-
-%%%%%%%%%%%%%%%%%%%%
-% AB(1,1)=BilinearGQuadPartInterm(X(1)-h,X(1),Y(1)-h,Y(1),X(1),Y(1),X(1),Y(1),h,N)+BilinearGQuadPartInterm(X(1),X(1)+h,Y(1)-h,Y(1),X(1),Y(1),X(1),Y(1),h,N)+BilinearGQuadPartInterm(X(1)-h,X(1),Y(1),Y(1)+h,X(1),Y(1),X(1),Y(1),h,N)+BilinearGQuadPartInterm(X(1),X(1)+h,Y(1),Y(1)+h,X(1),Y(1),X(1),Y(1),h,N);
-% AB(1,2)=BilinearGQuadPartInterm(X(1),X(1)+h,Y(1)-h,Y(1),X(1),Y(1),X(2),Y(2),h,N)+BilinearGQuadPartInterm(X(1),X(1)+h,Y(1),Y(1)+h,X(1),Y(1),X(2),Y(2),h,N);
-% AB(1,1+Nx)=BilinearGQuadPartInterm(X(1)-h,X(1),Y(1),Y(1)+h,X(1),Y(1),X(1+Nx),Y(1+Nx),h,N)+BilinearGQuadPartInterm(X(1),X(1)+h,Y(1),Y(1)+h,X(1),Y(1),X(1+Nx),Y(1+Nx),h,N);
-% AB(1,1+Nx+1)=BilinearGQuadPartInterm(X(1),X(1)+h,Y(1),Y(1)+h,X(1),Y(1),X(1+Nx+1),Y(1+Nx+1),h,N);
-% AB(2,1)=AB(1,2); AB(1+Nx,1)=AB(1,1+Nx); AB(1+Nx+1,1)=AB(1,1+Nx+1);
 
 tic
 for i=1:nf^2
@@ -301,7 +285,7 @@ for i=1:nc^2
 end
 %pause
 tic
-BM=M_coef*Ph-speye(nf^2);%maybe we can restrict the matrices here using K_ind to be more efficient. Product of smaller matrices.
+BM=M_coef*Ph-speye(nf^2);
 Maux=AB*BM';
 A=BM*Maux;
 Maux=Ph*Maux;
@@ -310,13 +294,6 @@ Ac=A(K_ind,K_ind);
 Ac=sparse(Ac);
 L = ichol(Ac);
 
-%for nitermax=1:6
-%disp(nitermax)
-% for i=1:nc^2
-%     CMaux=pcg(Ac,(-1*Maux(i,K_ind))',1e-6,100,L,L');%Ac\((-1*Maux(i,K_ind))');
-%     %CMaux=CorrPCG(Ac,(-1*Maux(i,K_ind))',zeros(lenkind,1),R,nf,Nx,Ny,nitermax,H,h,BM,K_ind);
-%     CM(i,K_ind)=CMaux;
-% end
 
 
 %raux=zeros(lenkind*nc^2,1); caux=zeros(lenkind*nc^2,1); zaux=zeros(lenkind*nc^2,1);
@@ -543,5 +520,4 @@ end
      H1ND=sqrt(vd*M*vd');
      H1NDr=H1ND/sqrt(vr'*M*vr);
     
-     %save('Result 39-159','CM','CM2')
-    save('Result 135-271Incv2','Ams','Fms','ABc','CN_Ams','REN','RENhH','L2ND','L2NDr','H1ND','H1NDr')
+    save('Result','Ams','Fms','ABc','CN_Ams','REN','RENhH','L2ND','L2NDr','H1ND','H1NDr')
